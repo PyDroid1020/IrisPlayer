@@ -1,5 +1,5 @@
 # IrisPlayer
-A MusicPlayer app that will install your youtube playlist and you can enjoy it locally 
+A Music Player app that will install your YouTube playlist and enjoy it locally
 
 
 ## What do I need to run IrisPlayer ?
