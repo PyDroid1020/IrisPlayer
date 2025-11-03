@@ -3,6 +3,6 @@ A MusicPlayer app that will install your youtube playlist and you can enjoy it l
 
 
 ## What do I need to run IrisPlayer ?
-- python
+- python and ffmpeg
 - install the requirements.txt
 - run app.py
