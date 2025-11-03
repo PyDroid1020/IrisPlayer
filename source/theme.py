@@ -1,0 +1,5 @@
+import flet as ft
+DARK_BG = ft.Colors.BLACK
+DARK_ACCENT = ft.Colors.DEEP_PURPLE_400
+TEXT_COLOR = ft.Colors.WHITE
+PLAYER_BUTTONS_COLORS = ft.Colors.WHITE
