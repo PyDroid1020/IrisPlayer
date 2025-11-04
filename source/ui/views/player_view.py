@@ -63,7 +63,7 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
     shuffle_icon = ft.Icon(ft.Icons.SHUFFLE_OUTLINED, color=ft.Colors.GREY_500, size=18)
     loop_icon = ft.Icon(ft.Icons.REPEAT_ONE_OUTLINED, color=ft.Colors.GREY_500, size=18)
 
-    songs_reorder_list = ft.ReorderableListView(expand=True, auto_scroll=True)
+    songs_reorder_list = ft.ReorderableListView(expand=True, auto_scroll=False)
 
 
     def go_back():
