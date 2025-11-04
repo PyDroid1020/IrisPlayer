@@ -34,7 +34,6 @@ def open_settings_dialog(page):
         min=0, max=1, divisions=20, value=float(current_volume),
         active_color=DARK_ACCENT, inactive_color=ft.Colors.GREY_700,
         on_change=on_volume_change,
-        label="{value}",
         thumb_color=DARK_ACCENT
     )
     dialog = ft.AlertDialog(modal=True, content_padding=ft.padding.all(0))
@@ -149,4 +148,5 @@ def open_settings_dialog(page):
     dialog.actions = None 
     page.overlay.append(dialog)
     dialog.open = True
+
     page.update()
