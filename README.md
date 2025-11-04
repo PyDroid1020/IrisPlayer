@@ -6,3 +6,8 @@ A Music Player app that will install your YouTube playlist and enjoy it locally
 - python and ffmpeg
 - install the requirements.txt
 - run app.py
+
+## Logs
+```
+[+] Added run.bat
+```
