@@ -1,6 +1,6 @@
 # IrisPlayer
 A Music Player app that will install your YouTube playlist and enjoy it locally
-
+App is still in Beta 
 
 ## What do I need to run IrisPlayer ?
 - python and ffmpeg
