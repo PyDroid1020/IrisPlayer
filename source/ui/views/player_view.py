@@ -11,7 +11,7 @@ from source.data.utils import format_duration
 from source.ui.dialogs.edit_song_dialog import edit_song_dialog
 from source.ui.components.buttons import getButtons, updateButtons
 
-workers =  DbService.get_performance_workers()
+workers = DbService.get_performance_workers()
 
 PROCESS_POOL = ProcessPoolExecutor(max_workers=workers)
 # -------------------------------------
@@ -96,8 +96,10 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         star_icon = ft.Icons.STAR if is_fav else ft.Icons.STAR_OUTLINE
 
         def toggle_favourite(_):
-            DbService.toggle_favourite(song["file_path"])
-            refresh_songs() 
+            future_toggle = PROCESS_POOL.submit(DbService.toggle_favourite, song["file_path"])
+            def on_toggle_complete(future: Future):
+                page.run_thread(refresh_songs)
+            future_toggle.add_done_callback(on_toggle_complete)
 
         def delete_song(_):
             with ui_lock:
