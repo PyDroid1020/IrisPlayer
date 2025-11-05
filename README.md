@@ -1,9 +1,13 @@
 # IrisPlayer
-A Music Player app that installs your YouTube playlists so you can enjoy them locally — offline and with full control.
+A Music Player app that installs your YouTube playlists so you can enjoy them locally
+
+## 🏹 Features
+- Modern gui & easy to use.
+- Offline and with full control.
 
 ## 🧩 Notes
-- App is still in **Beta**
-- Works only on **Windows** at the moment
+- App is still in **Beta**.
+- Works only on **Windows** at the moment.
 
 ## ⚙️ Requirements
 - [Python](https://www.python.org/)
@@ -17,3 +21,10 @@ A Music Player app that installs your YouTube playlists so you can enjoy them lo
    ```bash
    pip install -r requirements.txt
    python app.py
+
+# Logs 
+[+] Added run.bat
+[=] Updated playlist view logic
+[+] Added performance settings
+[+] Updated database and player view logic
+[-] Removed the second drag hold icon
