@@ -10,4 +10,5 @@ App is still in Beta
 ## Logs
 ```
 [+] Added run.bat
+[=] Updated playlist view logic
 ```
