@@ -24,7 +24,8 @@ A Music Player app that installs your YouTube playlists so you can enjoy them lo
 
 ## Logs 
 - [+] Added run.bat
-- [=] Updated playlist view logic
 - [+] Added performance settings
 - [+] Updated database and player view logic
+- [=] Updated playlist view logic
+- [=] Fixed slow buttons 
 - [-] Removed the second drag hold icon
