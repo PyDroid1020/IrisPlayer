@@ -15,4 +15,7 @@ A Music Player app that will install your YouTube playlist and enjoy it locally
 ```
 [+] Added run.bat
 [=] Updated playlist view logic
+[+] Added Performance settings
+[+] Updated DataBase and Player view logic
+[-] Removed the second drag hold icon 
 ```
