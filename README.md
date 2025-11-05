@@ -1,25 +1,19 @@
 # IrisPlayer
-A Music Player app that will install your YouTube playlist and enjoy it locally
+A Music Player app that installs your YouTube playlists so you can enjoy them locally — offline and with full control.
 
-## Notes
-- App is still in Beta
-- Works only on windows at the moment
+## 🧩 Notes
+- App is still in **Beta**
+- Works only on **Windows** at the moment
 
-## What do I need to run IrisPlayer ?
-- python and ffmpeg
-- install the requirements.txt
-- run app.py
+## ⚙️ Requirements
+- [Python](https://www.python.org/)
+- [FFmpeg](https://ffmpeg.org/) (must be added to system environment variables)
 
-## Installation 
-- Install [python](python.org)
-- Install [ffmpeg](http://ffmpeg.org/)
-
-
-## Logs
-```
-[+] Added run.bat
-[=] Updated playlist view logic
-[+] Added Performance settings
-[+] Updated DataBase and Player view logic
-[-] Removed the second drag hold icon 
-```
+## 🚀 Installation
+1. Install Python and FFmpeg.
+2. Clone or extract the **IrisPlayer** folder to your desktop.
+3. Open a terminal in the folder.
+4. Run:
+   ```bash
+   pip install -r requirements.txt
+   python app.py
