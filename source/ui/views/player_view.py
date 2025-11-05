@@ -1,18 +1,21 @@
 import flet as ft
 import flet_audio as fa
+import threading
 from ..audio_player import Player
 from source.data.db import DbService
 from source.theme import DARK_ACCENT
 from source.data.utils import format_duration
 from source.ui.dialogs.edit_song_dialog import edit_song_dialog
 from source.ui.components.buttons import getButtons, updateButtons
-from source.ui.dialogs.edit_playlist_dialog import edit_playlist_dialog
 
 
 def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
+    ui_lock = threading.RLock()
     skip_seconds = int(DbService.get_setting("skip_seconds", 10))
     songs = DbService.get_playlist_data(playlist_name)
     audio = fa.Audio(volume=float(DbService.get_setting("volume", 0.4)))
+    
+    is_favourites_playlist = (playlist_name == "Favourites")
 
     playlist_title = ft.Text(playlist_name, size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
     track_count = ft.Text(f"{len(songs)} tracks", size=12, color=ft.Colors.GREY)
@@ -34,7 +37,6 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         border_radius=4,
     )
 
-    # Progress
     position_text = ft.Text("00:00", color=ft.Colors.GREY, size=10)
     duration_text = ft.Text("00:00", color=ft.Colors.GREY, size=10)
     progress_slider = ft.Slider(
@@ -59,62 +61,62 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         thumb_color=ft.Colors.TRANSPARENT,
     )
 
-    # Icons
     shuffle_icon = ft.Icon(ft.Icons.SHUFFLE_OUTLINED, color=ft.Colors.GREY_500, size=18)
     loop_icon = ft.Icon(ft.Icons.REPEAT_ONE_OUTLINED, color=ft.Colors.GREY_500, size=18)
 
-    songs_reorder_list = ft.ReorderableListView(expand=True, auto_scroll=False)
-
+    songs_list_control = None
 
     def go_back():
-        audio.pause()
-        audio.release()
-        open_main_list_view_fn()
+        with ui_lock:
+            audio.pause()
+            audio.release()
+            open_main_list_view_fn()
 
 
     def update_ui():
-        if not player.songs:
+        with ui_lock:
+            if not player.songs:
+                page.update()
+                return
+
+            song = player.songs[player.current_index] if player.current_index < len(player.songs) else None
+            max_ms = max(1, player.duration * 1000)
+            pos_ms = player.position * 1000
+
+            if song:
+                current_song_text.value = song["title"]
+                current_playlist_text.value = playlist_name
+                position_text.value = format_duration(player.position)
+                duration_text.value = format_duration(player.duration)
+                progress_slider.max = max_ms
+                progress_slider.value = min(pos_ms, max_ms)
+
+                current_thumb.content = ft.Image(
+                    src=song["thumbnail_path"],
+                    width=56,
+                    height=56,
+                    fit=ft.ImageFit.COVER,
+                    border_radius=4
+                ) if song.get("thumbnail_path") else ft.Icon(ft.Icons.MUSIC_NOTE, color=ft.Colors.GREY)
+            else:
+                current_song_text.value = "No song loaded"
+                current_playlist_text.value = "Select a song"
+                current_thumb.content = ft.Icon(ft.Icons.MUSIC_NOTE, color=ft.Colors.GREY)
+                position_text.value = duration_text.value = "00:00"
+                progress_slider.max = 1.0
+                progress_slider.value = 0
+
+            shuffle_icon.color = DARK_ACCENT if player.shuffle else ft.Colors.GREY_500
+            loop_icon.color = DARK_ACCENT if player.loop else ft.Colors.GREY_500
+
+            for i, ctrl in enumerate(songs_list_control.controls):
+                ctrl.bgcolor = ft.Colors.BLACK87 if i == player.current_index else ft.Colors.TRANSPARENT
+
+            if not DbService.get_playlist_data(playlist_name):
+                go_back()
+
+            updateButtons(PlayerButtons, player)
             page.update()
-            return
-
-        song = player.songs[player.current_index] if player.current_index < len(player.songs) else None
-        max_ms = max(1, player.duration * 1000)
-        pos_ms = player.position * 1000
-
-        if song:
-            current_song_text.value = song["title"]
-            current_playlist_text.value = playlist_name
-            position_text.value = format_duration(player.position)
-            duration_text.value = format_duration(player.duration)
-            progress_slider.max = max_ms
-            progress_slider.value = min(pos_ms, max_ms)
-
-            current_thumb.content = ft.Image(
-                src=song["thumbnail_path"],
-                width=56,
-                height=56,
-                fit=ft.ImageFit.COVER,
-                border_radius=4
-            ) if song.get("thumbnail_path") else ft.Icon(ft.Icons.MUSIC_NOTE, color=ft.Colors.GREY)
-        else:
-            current_song_text.value = "No song loaded"
-            current_playlist_text.value = "Select a song"
-            current_thumb.content = ft.Icon(ft.Icons.MUSIC_NOTE, color=ft.Colors.GREY)
-            position_text.value = duration_text.value = "00:00"
-            progress_slider.max = 1.0
-            progress_slider.value = 0
-
-        shuffle_icon.color = DARK_ACCENT if player.shuffle else ft.Colors.GREY_500
-        loop_icon.color = DARK_ACCENT if player.loop else ft.Colors.GREY_500
-
-        for i, ctrl in enumerate(songs_reorder_list.controls):
-            ctrl.bgcolor = ft.Colors.BLACK87 if i == player.current_index else ft.Colors.TRANSPARENT
-
-        if not DbService.get_playlist_data(playlist_name):
-            go_back()
-
-        updateButtons(PlayerButtons, player)
-        page.update()
 
 
     player = Player(audio, songs, update_ui, skip_seconds)
@@ -146,36 +148,46 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
             padding=0
         )
 
+        drag_or_spacer = ft.Icon(
+            ft.Icons.DRAG_HANDLE, 
+            color=ft.Colors.GREY_700, 
+            size=20
+        ) if not is_favourites_playlist else ft.Container(
+            width=20, 
+            height=20
+        )
+
         def toggle_favourite(_):
             DbService.toggle_favourite(song["file_path"])
             player.songs = DbService.get_playlist_data(playlist_name)
             refresh_songs()
 
         def delete_song(_):
-            try:
-                idx = next(i for i, c in enumerate(songs_reorder_list.controls) if c.key == song["file_path"])
-            except StopIteration:
-                return
-            DbService.delete_song(song["file_path"])
-            new_songs = DbService.get_playlist_data(playlist_name)
-            if not new_songs:
-                DbService.delete_playlist(playlist_name)
-                go_back()
-                return
-            if player.current_index == idx:
-                player.current_index = min(player.current_index, len(new_songs) - 1)
-                player.play_index(player.current_index)
-            elif idx < player.current_index:
-                player.current_index -= 1
-            refresh_songs()
-            page.update()
+            with ui_lock:
+                try:
+                    idx = next(i for i, c in enumerate(songs_list_control.controls) if c.key == song["file_path"])
+                except StopIteration:
+                    return
+                DbService.delete_song(song["file_path"])
+                new_songs = DbService.get_playlist_data(playlist_name)
+                if not new_songs:
+                    DbService.delete_playlist(playlist_name)
+                    go_back()
+                    return
+                if player.current_index == idx:
+                    player.current_index = min(player.current_index, len(new_songs) - 1)
+                    player.play_index(player.current_index)
+                elif idx < player.current_index:
+                    player.current_index -= 1
+                refresh_songs()
+                page.update()
 
         def edit_song(_):
             edit_song_dialog(page, song["file_path"], refresh_songs)
 
         def play_song(_):
             try:
-                idx = next(i for i, c in enumerate(songs_reorder_list.controls) if c.key == song["file_path"])
+                idx = next(i for i, c in enumerate(songs_list_control.controls) if c.key == song["file_path"])
                 player.play_index(idx)
             except StopIteration:
                 pass
@@ -208,7 +220,7 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
                     ft.Row(
                         [
                             ft.Text(str(display_index), color=ft.Colors.GREY, size=12, width=20, text_align=ft.TextAlign.CENTER),
-                            ft.Icon(ft.Icons.DRAG_HANDLE, color=ft.Colors.GREY_700, size=20),
+                            drag_or_spacer,
                             thumb,
                         ],
                         spacing=6,
@@ -252,21 +264,29 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
 
 
     def refresh_songs(new_name=None):
-        nonlocal playlist_name
-        if new_name:
-            playlist_name = new_name
-        player.songs = DbService.get_playlist_data(playlist_name)
-        playlist_title.value = playlist_name
-        track_count.value = f"{len(player.songs)} tracks"
-        songs_reorder_list.controls.clear()
-        for i, song in enumerate(player.songs):
-            songs_reorder_list.controls.append(song_tile(song, i))
-        update_index_display()
-        update_ui()
+        with ui_lock:
+            nonlocal playlist_name, is_favourites_playlist
+            if new_name:
+                playlist_name = new_name
+                is_favourites_playlist = (playlist_name == "Favourites")
+            
+            player.songs = DbService.get_playlist_data(playlist_name)
+            playlist_title.value = playlist_name
+            track_count.value = f"{len(player.songs)} tracks"
+            
+            songs_list_control.controls.clear()
+            for i, song in enumerate(player.songs):
+                songs_list_control.controls.append(song_tile(song, i))
+            
+            if isinstance(songs_list_control, ft.ReorderableListView):
+                songs_list_control.disabled = is_favourites_playlist
+            
+            update_index_display()
+            update_ui()
 
 
     def update_index_display():
-        for idx, ctrl in enumerate(songs_reorder_list.controls):
+        for idx, ctrl in enumerate(songs_list_control.controls):
             try:
                 index_text = ctrl.content.controls[0].controls[0]
                 index_text.value = str(idx + 1)
@@ -275,40 +295,40 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
 
 
     def on_reorder(e: ft.OnReorderEvent):
-        old = e.old_index
-        new = e.new_index
-        ctrl = songs_reorder_list.controls.pop(old)
-        songs_reorder_list.controls.insert(new, ctrl)
-        song = player.songs.pop(old)
-        player.songs.insert(new, song)
-        DbService.update_playlist_order(playlist_name, [c.key for c in songs_reorder_list.controls])
+        with ui_lock:
+            old = e.old_index
+            new = e.new_index
+            ctrl = songs_list_control.controls.pop(old)
+            songs_list_control.controls.insert(new, ctrl)
+            song = player.songs.pop(old)
+            player.songs.insert(new, song)
+            DbService.update_playlist_order(playlist_name, [c.key for c in songs_list_control.controls])
 
-        if player.current_index == old:
-            player.current_index = new
-        elif old < player.current_index <= new:
-            player.current_index -= 1
-        elif new <= player.current_index < old:
-            player.current_index += 1
+            if player.current_index == old:
+                player.current_index = new
+            elif old < player.current_index <= new:
+                player.current_index -= 1
+            elif new <= player.current_index < old:
+                player.current_index += 1
 
-        update_index_display()
-        update_ui()
+            update_index_display()
+            update_ui()
 
-
-    songs_reorder_list.on_reorder = on_reorder
-    PlayerButtons = getButtons(player)
-
-
-    # Header
-    action_buttons = []
-    if playlist_name != "Favourites":
-        action_buttons.append(
-            ft.IconButton(
-                icon=ft.Icons.EDIT_OUTLINED,
-                tooltip="Edit Playlist",
-                icon_color=ft.Colors.WHITE,
-                on_click=lambda _: edit_playlist_dialog(playlist_name, refresh_songs, page, [go_back, update_ui])
-            )
+    
+    if is_favourites_playlist:
+        songs_list_control = ft.ListView(
+            expand=True, 
+            auto_scroll=False, 
+            padding=0
         )
+    else:
+        songs_list_control = ft.ReorderableListView(
+            expand=True, 
+            auto_scroll=False,
+            on_reorder=on_reorder
+        )
+        
+    PlayerButtons = getButtons(player)
 
     header = ft.Container(
         content=ft.Column([
@@ -323,13 +343,10 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
                 ft.Container(width=40),
                 ft.Container(width=40),
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=10, height=30),
-            ft.Row(action_buttons, alignment=ft.MainAxisAlignment.START, spacing=12)
         ]),
         padding=8
     )
 
-
-    # Player Controls
     player_controls = ft.Container(
         content=ft.Row([
             ft.Container(
@@ -354,10 +371,10 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         bgcolor=ft.Colors.with_opacity(0.98, ft.Colors.BLACK)
     )
 
-
     page.add(audio)
+    
     for i, song in enumerate(player.songs):
-        songs_reorder_list.controls.append(song_tile(song, i))
+        songs_list_control.controls.append(song_tile(song, i))
     update_index_display()
 
-    return [header, songs_reorder_list, player_controls]
+    return [header, songs_list_control, player_controls]
