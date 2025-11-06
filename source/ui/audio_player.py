@@ -4,6 +4,7 @@ import flet_audio as fa
 from source.data.db import DbService 
 
 class Player:
+    __slots__ = ['audio','songs','update_ui','SK','current_index','duration','position','state','shuffle','loop']
     def __init__(self, audio: fa.Audio, songs, update_ui, SK=10):
         self.audio = audio
         self.songs = songs
@@ -150,4 +151,5 @@ class Player:
         if e.control.value is not None:
             self.audio.volume = float(e.control.value)
             DbService.set_setting("volume", str(self.audio.volume))
+
             self.update_ui()
