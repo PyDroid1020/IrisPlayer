@@ -114,6 +114,7 @@ def open_settings_dialog(page):
             open=True 
         )
         page.update()
+        page.overlay.append(page.banner)
         close(e) 
 
     reset_button = ft.ElevatedButton(
