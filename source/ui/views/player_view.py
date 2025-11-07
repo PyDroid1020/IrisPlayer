@@ -138,9 +138,12 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
 
         shuffle_icon.color = DARK_ACCENT if player.shuffle else ft.Colors.GREY_500
         loop_icon.color = DARK_ACCENT if player.loop else ft.Colors.GREY_500
-
+        chosen = ft.Colors.with_opacity(0.09 , ft.Colors.WHITE70)
+        unchosen = ft.Colors.TRANSPARENT
         for i, ctrl in enumerate(songs_list_control.controls):
-            ctrl.bgcolor = ft.Colors.BLACK87 if i == player.current_index else ft.Colors.TRANSPARENT
+            ctrl:ft.Container
+            ctrl.bgcolor = chosen if i == player.current_index else unchosen
+            ctrl.animate = ft.Animation(duration=300, curve=ft.AnimationCurve.EASE)
 
         updateButtons(PlayerButtons, player)
         page.update()
@@ -293,7 +296,6 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, height=30)
         ]), padding=8
     )
-
     player_controls = ft.Container(
         content=ft.Row([
             ft.Container(
@@ -323,7 +325,6 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         border=ft.border.only(top=ft.border.BorderSide(1, ft.Colors.BLACK)),
         bgcolor=ft.Colors.with_opacity(0.98, ft.Colors.BLACK)
     )
-    
     page.add(audio)
     songs_list_control.controls[:] = [song_tile(s, i) for i, s in enumerate(player.songs)]
     return [header, songs_list_control, player_controls]
