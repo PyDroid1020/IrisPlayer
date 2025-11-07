@@ -151,25 +151,41 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
 
     def song_tile(song, list_index):
         display_index = list_index + 1
-        
         is_fav = song["file_path"] in DbService.get_favourites()
         star_icon = ft.Icons.STAR if is_fav else ft.Icons.STAR_OUTLINE
-
         def toggle_favourite(_):
-            future_toggle = EXECUTOR.submit(DbService.toggle_favourite, song["file_path"])
-            future_toggle.add_done_callback(lambda _: page.run_thread(refresh_songs))
-
-        def delete_song(_):
-            future_delete = EXECUTOR.submit(DbService.delete_song, song["file_path"])
-
-            def after_delete(_):
-                new_songs = DbService.get_playlist_data(playlist_name)
-                if not new_songs:
-                    DbService.delete_playlist(playlist_name)
-                    page.run_thread(go_back)
-                else:
+            def on_toggle_complete(future: Future):
+                try:
+                    future.result()
+                    cached_playlist_data.cache_clear()
+                    if is_favourites_playlist:
+                        updated_songs = DbService.get_playlist_data("Favourites")
+                        if not updated_songs:
+                            page.run_thread(go_back)
+                            return
+                    page.run_thread(refresh_songs)
+                except Exception as e:
+                    print(f"Error toggling favourite: {e}")
                     page.run_thread(refresh_songs)
 
+            future_toggle = EXECUTOR.submit(DbService.toggle_favourite, song["file_path"])
+            future_toggle.add_done_callback(on_toggle_complete)
+
+        def delete_song(_):
+            def after_delete(future: Future):
+                try:
+                    future.result()
+                    new_songs = DbService.get_playlist_data(playlist_name)
+                    
+                    if not new_songs and is_favourites_playlist:
+                        page.run_thread(go_back)
+                    else:
+                        page.run_thread(refresh_songs)
+                except Exception as e:
+                    print(f"Error deleting song: {e}")
+                    page.run_thread(refresh_songs)
+
+            future_delete = EXECUTOR.submit(DbService.delete_song, song["file_path"])
             future_delete.add_done_callback(after_delete)
 
         def edit_song(_):
@@ -278,7 +294,35 @@ def get_player_view(page: ft.Page, playlist_name: str, open_main_list_view_fn):
         ]), padding=8
     )
 
-    player_controls = ft.Container(content=ft.Row([ft.Container(content=ft.Row([current_thumb, ft.Column([current_song_text, current_playlist_text], spacing=2, width=150, alignment=ft.MainAxisAlignment.CENTER)], spacing=8, alignment=ft.MainAxisAlignment.START), width=300), ft.Column([ft.Row(PlayerButtons, alignment=ft.MainAxisAlignment.CENTER, spacing=16), ft.Row([position_text, progress_slider, duration_text], alignment=ft.MainAxisAlignment.CENTER, spacing=8, width=500)], expand=True, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6), ft.Container(content=ft.Row([shuffle_icon, loop_icon, ft.Icon(ft.Icons.VOLUME_UP, color=ft.Colors.GREY, size=18), volume_slider], spacing=8, alignment=ft.MainAxisAlignment.END), width=200)], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER), padding=ft.padding.symmetric(horizontal=16, vertical=10), border=ft.border.only(top=ft.border.BorderSide(1, ft.Colors.BLACK)), bgcolor=ft.Colors.with_opacity(0.98, ft.Colors.BLACK))
+    player_controls = ft.Container(
+        content=ft.Row([
+            ft.Container(
+                content=ft.Row([
+                    current_thumb,
+                    ft.Column([
+                        current_song_text,
+                        current_playlist_text
+                    ], spacing=2, width=150, alignment=ft.MainAxisAlignment.CENTER)
+                ], spacing=8, alignment=ft.MainAxisAlignment.START),
+                width=300
+            ),
+            ft.Column([
+                ft.Row(PlayerButtons, alignment=ft.MainAxisAlignment.CENTER, spacing=16),
+                ft.Row([position_text, progress_slider, duration_text], alignment=ft.MainAxisAlignment.CENTER, spacing=8, width=500)
+            ], expand=True, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6),
+            ft.Container(
+                content=ft.Row([
+                    shuffle_icon, loop_icon,
+                    ft.Icon(ft.Icons.VOLUME_UP, color=ft.Colors.GREY, size=18),
+                    volume_slider
+                ], spacing=8, alignment=ft.MainAxisAlignment.END),
+                width=200
+            )
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=ft.padding.symmetric(horizontal=0, vertical=0),
+        border=ft.border.only(top=ft.border.BorderSide(1, ft.Colors.BLACK)),
+        bgcolor=ft.Colors.with_opacity(0.98, ft.Colors.BLACK)
+    )
     
     page.add(audio)
     songs_list_control.controls[:] = [song_tile(s, i) for i, s in enumerate(player.songs)]
