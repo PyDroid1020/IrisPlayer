@@ -1,4 +1,5 @@
-import sqlite3, json, os, platform
+from pathlib import Path
+import sqlite3, json, os
 from .utils import DB_FILE, AUDIO_DIR, THUMBNAIL_DIR
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,48 +13,32 @@ def safe_remove(file_path):
     return False
 
 class DbService:
-    
+    __slots__ = []
     @staticmethod
     def _connect():
         conn = sqlite3.connect(DB_FILE)
         conn.execute("PRAGMA foreign_keys = ON;")
         return conn
-
+        
     @staticmethod
     def reset_application_data():
         print("Starting application data reset...")
-        
-        files_to_delete = []
-        try:
-            for item in os.listdir(AUDIO_DIR):
-                item_path = os.path.join(AUDIO_DIR, item)
-                if os.path.isfile(item_path):
-                    files_to_delete.append(item_path)
-            
-            for item in os.listdir(THUMBNAIL_DIR):
-                item_path = os.path.join(THUMBNAIL_DIR, item)
-                if os.path.isfile(item_path):
-                    files_to_delete.append(item_path)
-        except Exception as e:
-            print(f"Error listing files for deletion: {e}")
-
-        deleted_count = 0
+        workers = DbService.get_performance_workers()
+        files_to_delete = [ f for d in (AUDIO_DIR, THUMBNAIL_DIR) for f in Path(d).iterdir() if f.is_file()]
         if files_to_delete:
-            with ThreadPoolExecutor() as pool:
-                results = list(pool.map(safe_remove, files_to_delete))
-                deleted_count = sum(1 for r in results if r)
-        
-        print(f"Reset complete. Deleted {deleted_count} files.")
-        
-        db_deleted = False
-        if os.path.exists(DB_FILE):
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                pool.map(safe_remove, files_to_delete)
+        db_path = Path(DB_FILE)
+        if db_path.exists():
             try:
-                os.remove(DB_FILE)
+                db_path.unlink()
+                print(f"Deleted database file {db_path}")
                 db_deleted = True
-                print(f"Deleted database file {DB_FILE}.")
             except Exception as e:
-                print(f"Failed to delete database file {DB_FILE}: {e}")
-        
+                print(f"Failed to delete database file {db_path}: {e}")
+                db_deleted = False
+        else:
+            db_deleted = False
         DbService.init_db()
         DbService.init_settings()
         return db_deleted
@@ -692,3 +677,4 @@ class DbService:
         finally:
             if conn:
                 conn.close()
+
