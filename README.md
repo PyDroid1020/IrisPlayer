@@ -23,9 +23,13 @@ A Music Player app that installs your YouTube playlists so you can enjoy them lo
    python app.py
 
 ## Logs 
+```
 - [+] Added run.bat
 - [+] Added performance settings
 - [+] Updated database and player view logic
 - [=] Updated playlist view logic
-- [=] Fixed slow buttons 
+- [=] Fixed slow buttons
+- [=] Fixed unstable playist view
+- [=] More Optimization 
 - [-] Removed the second drag hold icon
+```
